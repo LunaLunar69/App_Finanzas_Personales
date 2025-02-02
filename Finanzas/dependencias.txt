@@ -1,0 +1,8 @@
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.3
+  cloud_firestore: ^5.5.0
+  hidden_drawer_menu: ^3.0.1
+  flutter_credit_card: ^4.0.1
+  intl: ^0.20.1
