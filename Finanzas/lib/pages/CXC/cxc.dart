@@ -19,13 +19,13 @@ class CxcPage extends StatelessWidget {
           content: SingleChildScrollView(
             child: Column(
               children: [
-                TextField(controller: fechaController, decoration: InputDecoration(labelText: 'Fecha')),
-                TextField(controller: nombreController, decoration: InputDecoration(labelText: 'Nombre')),
-                TextField(controller: facturaController, decoration: InputDecoration(labelText: 'No. Factura')),
-                TextField(controller: importeController, decoration: InputDecoration(labelText: 'Importe Total')),
-                TextField(controller: saldoPagadoController, decoration: InputDecoration(labelText: 'Saldo Pagado')),
-                TextField(controller: saldoActualController, decoration: InputDecoration(labelText: 'Saldo Actual')),
-                TextField(controller: categoriaController, decoration: InputDecoration(labelText: 'Categoría')),
+                TextField(controller: fechaController, decoration: const InputDecoration(labelText: 'Fecha')),
+                TextField(controller: nombreController, decoration: const InputDecoration(labelText: 'Nombre')),
+                TextField(controller: facturaController, decoration: const InputDecoration(labelText: 'No. Factura')),
+                TextField(controller: importeController, decoration: const InputDecoration(labelText: 'Importe Total')),
+                TextField(controller: saldoPagadoController, decoration: const InputDecoration(labelText: 'Saldo Pagado')),
+                TextField(controller: saldoActualController, decoration: const InputDecoration(labelText: 'Saldo Actual')),
+                TextField(controller: categoriaController, decoration: const InputDecoration(labelText: 'Categoría')),
               ],
             ),
           ),
