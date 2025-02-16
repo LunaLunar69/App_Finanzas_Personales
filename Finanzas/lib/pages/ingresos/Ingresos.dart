@@ -119,7 +119,6 @@ class _IngresoFormState extends State<IngresoForm> {
   Widget build(BuildContext context) {
     return Scaffold( 
       appBar: AppBar(
-        title: const Text('Ingresos'),
         automaticallyImplyLeading: false,
       ),
       body: Padding(

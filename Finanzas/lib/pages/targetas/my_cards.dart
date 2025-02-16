@@ -179,6 +179,7 @@ class _CardListPageState extends State<CardListPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mis tarjetas'),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),

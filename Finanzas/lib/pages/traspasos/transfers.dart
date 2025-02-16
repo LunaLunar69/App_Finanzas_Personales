@@ -348,7 +348,6 @@ class _TransfersPageState extends State<TransfersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Transpasos'),
         automaticallyImplyLeading: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(kToolbarHeight * 2),

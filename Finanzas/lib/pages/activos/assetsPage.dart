@@ -146,7 +146,6 @@ class _AssetsPageState extends State<AssetsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activos'),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(

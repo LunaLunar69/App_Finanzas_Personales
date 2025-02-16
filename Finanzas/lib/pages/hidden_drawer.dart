@@ -1,3 +1,5 @@
+import 'package:minimallogin/pages/CXC/cxc.dart';
+import 'package:minimallogin/pages/CXP/cxp.dart';
 import 'package:minimallogin/pages/home_page.dart';
 import 'package:minimallogin/pages/ingresos/Ingresos.dart';
 import 'package:minimallogin/pages/settings_page.dart';
@@ -76,6 +78,24 @@ class _HiddenDrawer extends State<HiddenDrawer> {
               TextStyle(color: Theme.of(context).colorScheme.primary),
         ),
         AssetsPage(),
+      ),
+      ScreenHiddenDrawer(
+        ItemHiddenMenu(
+          name: 'C X P',
+          baseStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
+          selectedStyle:
+              TextStyle(color: Theme.of(context).colorScheme.primary),
+        ),
+        CxpPage(),
+      ),
+      ScreenHiddenDrawer(
+        ItemHiddenMenu(
+          name: 'C X C',
+          baseStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
+          selectedStyle:
+              TextStyle(color: Theme.of(context).colorScheme.primary),
+        ),
+        CxcPage(),
       ),
       ScreenHiddenDrawer(
         ItemHiddenMenu(
