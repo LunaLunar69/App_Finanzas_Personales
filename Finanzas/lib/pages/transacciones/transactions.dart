@@ -1,9 +1,10 @@
+import 'dart:async';
+
 import 'package:minimallogin/querys/firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-
 
 class TransactionsPage extends StatefulWidget {
   const TransactionsPage({super.key});
@@ -35,177 +36,250 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final loadedTransactions = await firestoreService.getTransactions();
     setState(() {
       transactions = loadedTransactions;
+      filteredTransactions = loadedTransactions;
+    });
+  }
+
+  late StreamSubscription? categoriesSubscription;
+  List<String> allCategories = [];
+  final List<String> defaultCategories = [
+    'Pasajes',
+    'Hobbies',
+    'Escuela',
+    'Salud',
+    'Comida'
+  ];
+
+  //get categories from Firebase
+  void initializeCategories(String userId) {
+    categoriesSubscription =
+        firestoreService.getCategories(userId).listen((snapshot) {
+      if (snapshot.exists) {
+        final data = snapshot.data() as Map<String, dynamic>;
+        final List<String> firebaseCategories =
+            List<String>.from(data['categorias'] ?? [])
+                .where((category) => !defaultCategories.contains(category))
+                .toList();
+
+        setState(() {
+          allCategories = [...defaultCategories, ...firebaseCategories];
+        });
+      }
     });
   }
 
   Future<void> _showAddTransactionDialog() async {
     final TextEditingController conceptController = TextEditingController();
-    final TextEditingController invoiceNumberController =
-        TextEditingController();
+    final TextEditingController invoiceNumberController = TextEditingController();
     final TextEditingController importController = TextEditingController();
     final TextEditingController descriptionController = TextEditingController();
-    final TextEditingController currentBalanceController =
-        TextEditingController();
-    final TextEditingController categoryController = TextEditingController();
-
+    final TextEditingController currentBalanceController = TextEditingController();
     final TextEditingController amountController = TextEditingController();
 
     String method = 'Crédito';
     final List<String> methods = ['Efectivo', 'Crédito'];
 
+    String? selectedCategory;
+    List<String> dialogCategories = List.from(defaultCategories);
+
     DateTime selectedDate = DateTime.now();
     DateTime paymentDate = DateTime.now();
 
+    final categoriesStreamController = StreamController<List<String>>();
+
+    firestoreService.getCategories('sampleUser').listen((snapshot) {
+      if (snapshot.exists) {
+        final data = snapshot.data() as Map<String, dynamic>;
+        final List<String> firebaseCategories = 
+            List<String>.from(data['categorias'] ?? [])
+                .where((category) => !defaultCategories.contains(category))
+                .toList();
+        
+        //to add the default categories and the categories from firebase
+        final combinedCategories = [...defaultCategories, ...firebaseCategories];
+        categoriesStreamController.add(combinedCategories);
+      } else {
+        categoriesStreamController.add(defaultCategories);
+      }
+    });
+
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Agregar transacción'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: conceptController,
-                decoration: const InputDecoration(labelText: 'Concepto'),
-              ),
-              TextField(
-                controller: invoiceNumberController,
-                decoration:
-                    const InputDecoration(labelText: 'Número de factura'),
-              ),
-              TextField(
-                controller: importController,
-                decoration: const InputDecoration(labelText: 'Importe'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Descripción'),
-                maxLines: 3,
-              ),
-              TextField(
-                controller: currentBalanceController,
-                decoration: const InputDecoration(labelText: 'Saldo actual'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: categoryController,
-                decoration: const InputDecoration(labelText: 'Categoría'),
-              ),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Método',
-                  border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Agregar transacción'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: conceptController,
+                  decoration: const InputDecoration(labelText: 'Concepto'),
                 ),
-                items: methods.map((String type) {
-                  return DropdownMenuItem<String>(
-                    value: type,
-                    child: Text(type),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    method = newValue!;
-                  });
-                },
-              ),
-              TextField(
-                controller: amountController,
-                decoration: const InputDecoration(labelText: 'Monto'),
-                keyboardType: TextInputType.number,
-              ),
-              ListTile(
-                title: const Text('Fecha'),
-                subtitle: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
-                onTap: () async {
-                  final DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      selectedDate = picked;
-                    });
-                  }
-                },
-              ),
-              ListTile(
-                title: const Text('Fecha de pago'),
-                subtitle: Text(DateFormat('yyyy-MM-dd').format(paymentDate)),
-                onTap: () async {
-                  final DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: paymentDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      paymentDate = picked;
-                    });
-                  }
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (conceptController.text.isEmpty ||
-                  invoiceNumberController.text.isEmpty ||
-                  importController.text.isEmpty ||
-                  descriptionController.text.isEmpty ||
-                  amountController.text.isEmpty) {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Alerta'),
-                    content: const Text(
-                        'Por favor complete todos los campos obligatorios'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Aceptar'),
+                TextField(
+                  controller: invoiceNumberController,
+                  decoration: const InputDecoration(labelText: 'Número de factura'),
+                ),
+                TextField(
+                  controller: importController,
+                  decoration: const InputDecoration(labelText: 'Importe'),
+                  keyboardType: TextInputType.number,
+                ),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(labelText: 'Descripción'),
+                  maxLines: 3,
+                ),
+                TextField(
+                  controller: currentBalanceController,
+                  decoration: const InputDecoration(labelText: 'Saldo actual'),
+                  keyboardType: TextInputType.number,
+                ),
+                StreamBuilder<List<String>>(
+                  stream: categoriesStreamController.stream,
+                  initialData: dialogCategories,
+                  builder: (context, snapshot) {
+                    final categories = snapshot.data ?? dialogCategories;
+                    
+                    return DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Categoría',
+                        border: OutlineInputBorder(),
                       ),
-                    ],
+                      value: selectedCategory,
+                      items: categories.map((String category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          selectedCategory = newValue;
+                        });
+                      },
+                    );
+                  },
+                ),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Método',
+                    border: OutlineInputBorder(),
                   ),
-                );
-                return;
-              }
-
-              await firestoreService.addTransaction(
-                date: selectedDate,
-                concept: conceptController.text,
-                invoiceNumber: invoiceNumberController.text,
-                import: double.tryParse(importController.text) ?? 0,
-                description: descriptionController.text,
-                currentBalance:
-                    double.tryParse(currentBalanceController.text) ?? 0,
-                category: categoryController.text,
-                method: method,
-                amount: double.tryParse(amountController.text) ?? 0,
-                paymentDate: paymentDate,
-                balance: 0,
-              );
-              _loadTransactions();
-              Navigator.pop(context);
-            },
-            child: const Text('Agregar'),
+                  value: method,
+                  items: methods.map((String type) {
+                    return DropdownMenuItem<String>(
+                      value: type,
+                      child: Text(type),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      method = newValue!;
+                    });
+                  },
+                ),
+                TextField(
+                  controller: amountController,
+                  decoration: const InputDecoration(labelText: 'Monto'),
+                  keyboardType: TextInputType.number,
+                ),
+                ListTile(
+                  title: const Text('Fecha'),
+                  subtitle: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        selectedDate = picked;
+                      });
+                    }
+                  },
+                ),
+                ListTile(
+                  title: const Text('Fecha de pago'),
+                  subtitle: Text(DateFormat('yyyy-MM-dd').format(paymentDate)),
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: paymentDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        paymentDate = picked;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () {
+                categoriesStreamController.close();
+                Navigator.pop(context);
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (conceptController.text.isEmpty ||
+                    invoiceNumberController.text.isEmpty ||
+                    importController.text.isEmpty ||
+                    descriptionController.text.isEmpty ||
+                    amountController.text.isEmpty ||
+                    selectedCategory == null) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Alerta'),
+                      content: const Text('Por favor complete todos los campos obligatorios'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Aceptar'),
+                        ),
+                      ],
+                    ),
+                  );
+                  return;
+                }
+
+                await firestoreService.addTransaction(
+                  date: selectedDate,
+                  concept: conceptController.text,
+                  invoiceNumber: invoiceNumberController.text,
+                  import: double.tryParse(importController.text) ?? 0,
+                  description: descriptionController.text,
+                  currentBalance: double.tryParse(currentBalanceController.text) ?? 0,
+                  category: selectedCategory!,
+                  method: method,
+                  amount: double.tryParse(amountController.text) ?? 0,
+                  paymentDate: paymentDate,
+                  balance: 0,
+                );
+                
+                categoriesStreamController.close();
+                _loadTransactions();
+                Navigator.pop(context);
+              },
+              child: const Text('Agregar'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _showEditTransactionDialog(
-      Map<String, dynamic> transaction) async {
+  Future<void> _showEditTransactionDialog(Map<String, dynamic> transaction) async {
     final TextEditingController conceptController =
         TextEditingController(text: transaction['concept'] ?? '');
     final TextEditingController invoiceNumberController =
@@ -215,147 +289,208 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final TextEditingController descriptionController =
         TextEditingController(text: transaction['description'] ?? '');
     final TextEditingController currentBalanceController =
-        TextEditingController(
-            text: transaction['currentBalance']?.toString() ?? '0');
-    final TextEditingController categoryController =
-        TextEditingController(text: transaction['category'] ?? '');
+        TextEditingController(text: transaction['currentBalance']?.toString() ?? '0');
     final TextEditingController amountController =
         TextEditingController(text: transaction['amount']?.toString() ?? '0');
 
     String method = transaction['method'] ?? 'Crédito';
     final List<String> methods = ['Efectivo', 'Crédito'];
 
+    final categoriesStreamController = StreamController<List<String>>();
+
+    firestoreService.getCategories('sampleUser').listen((snapshot) {
+      if (snapshot.exists) {
+        final data = snapshot.data() as Map<String, dynamic>;
+        final List<String> firebaseCategories = 
+            List<String>.from(data['categorias'] ?? [])
+                .where((category) => !defaultCategories.contains(category))
+                .toList();
+        
+        final combinedCategories = [...defaultCategories, ...firebaseCategories];
+        categoriesStreamController.add(combinedCategories);
+      } else {
+        categoriesStreamController.add(defaultCategories);
+      }
+    });
+
     DateTime selectedDate = (transaction['date'] as Timestamp).toDate();
     DateTime paymentDate = (transaction['paymentDate'] as Timestamp).toDate();
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar transacción'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: conceptController,
-                decoration: const InputDecoration(labelText: 'Concepto'),
-              ),
-              TextField(
-                controller: invoiceNumberController,
-                decoration:
-                    const InputDecoration(labelText: 'Numero de factura'),
-              ),
-              TextField(
-                controller: importController,
-                decoration: const InputDecoration(labelText: 'Importe'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Descripcion'),
-                maxLines: 3,
-              ),
-              TextField(
-                controller: currentBalanceController,
-                decoration: const InputDecoration(labelText: 'Saldo actual'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: categoryController,
-                decoration: const InputDecoration(labelText: 'Categoria'),
-              ),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Metodo',
-                  border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Editar transacción'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: conceptController,
+                  decoration: const InputDecoration(labelText: 'Concepto'),
                 ),
-                value: method,
-                items: methods.map((String type) {
-                  return DropdownMenuItem<String>(
-                    value: type,
-                    child: Text(type),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    method = newValue!;
-                  });
-                },
-              ),
-              TextField(
-                controller: amountController,
-                decoration: const InputDecoration(labelText: 'Monto'),
-                keyboardType: TextInputType.number,
-              ),
-              ListTile(
-                title: const Text('Fecha'),
-                subtitle: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
-                onTap: () async {
-                  final DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) {
+                TextField(
+                  controller: invoiceNumberController,
+                  decoration: const InputDecoration(labelText: 'Numero de factura'),
+                ),
+                TextField(
+                  controller: importController,
+                  decoration: const InputDecoration(labelText: 'Importe'),
+                  keyboardType: TextInputType.number,
+                ),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(labelText: 'Descripcion'),
+                  maxLines: 3,
+                ),
+                TextField(
+                  controller: currentBalanceController,
+                  decoration: const InputDecoration(labelText: 'Saldo actual'),
+                  keyboardType: TextInputType.number,
+                ),
+                StreamBuilder<List<String>>(
+                  stream: categoriesStreamController.stream,
+                  initialData: defaultCategories,
+                  builder: (context, snapshot) {
+                    final categories = snapshot.data ?? defaultCategories;
+                    
+                    return DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Categoría',
+                        border: OutlineInputBorder(),
+                      ),
+                      value: transaction['category'],
+                      items: categories.map((String category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          transaction['category'] = newValue!;
+                        });
+                      },
+                    );
+                  },
+                ),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Metodo',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: method,
+                  items: methods.map((String type) {
+                    return DropdownMenuItem<String>(
+                      value: type,
+                      child: Text(type),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
                     setState(() {
-                      selectedDate = picked;
+                      method = newValue!;
                     });
-                  }
-                },
-              ),
-              ListTile(
-                title: const Text('Fecha de pago'),
-                subtitle: Text(DateFormat('yyyy-MM-dd').format(paymentDate)),
-                onTap: () async {
-                  final DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: paymentDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      paymentDate = picked;
-                    });
-                  }
-                },
-              ),
-            ],
+                  },
+                ),
+                TextField(
+                  controller: amountController,
+                  decoration: const InputDecoration(labelText: 'Monto'),
+                  keyboardType: TextInputType.number,
+                ),
+                ListTile(
+                  title: const Text('Fecha'),
+                  subtitle: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        selectedDate = picked;
+                      });
+                    }
+                  },
+                ),
+                ListTile(
+                  title: const Text('Fecha de pago'),
+                  subtitle: Text(DateFormat('yyyy-MM-dd').format(paymentDate)),
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: paymentDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        paymentDate = picked;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                categoriesStreamController.close();
+                Navigator.pop(context);
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (conceptController.text.isEmpty ||
+                    invoiceNumberController.text.isEmpty ||
+                    importController.text.isEmpty ||
+                    descriptionController.text.isEmpty ||
+                    amountController.text.isEmpty ||
+                    transaction['category'] == null) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Alerta'),
+                      content: const Text('Por favor complete todos los campos obligatorios'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Aceptar'),
+                        ),
+                      ],
+                    ),
+                  );
+                  return;
+                }
+
+                await firestoreService.updateTransaction(
+                  docId: transaction['id'],
+                  date: selectedDate,
+                  concept: conceptController.text,
+                  invoiceNumber: invoiceNumberController.text,
+                  import: double.tryParse(importController.text) ?? 0,
+                  description: descriptionController.text,
+                  currentBalance: double.tryParse(currentBalanceController.text) ?? 0,
+                  category: transaction['category'],
+                  method: method,
+                  amount: double.tryParse(amountController.text) ?? 0,
+                  paymentDate: paymentDate,
+                  balance: transaction['balance'] ?? 0,
+                );
+                categoriesStreamController.close();
+                _loadTransactions();
+                Navigator.pop(context);
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await firestoreService.updateTransaction(
-                docId: transaction['id'],
-                date: selectedDate,
-                concept: conceptController.text,
-                invoiceNumber: invoiceNumberController.text,
-                import: double.tryParse(importController.text) ?? 0,
-                description: descriptionController.text,
-                currentBalance:
-                    double.tryParse(currentBalanceController.text) ?? 0,
-                category: categoryController.text,
-                method: method,
-                amount: double.tryParse(amountController.text) ?? 0,
-                paymentDate: paymentDate,
-                balance: transaction['balance'] ?? 0,
-              );
-              _loadTransactions();
-              Navigator.pop(context);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
       ),
     );
   }
-
   Future<void> _showAddCategoryDialog() async {
     final TextEditingController categoryController = TextEditingController();
 
@@ -375,7 +510,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
           TextButton(
             onPressed: () async {
               if (categoryController.text.isNotEmpty) {
-                await firestoreService.addCategory(categoryController.text);
+                await firestoreService.addCategory(
+                    categoryController.text, 'sampleUser');
                 Navigator.pop(context);
               }
             },
@@ -444,10 +580,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
         filteredTransactions = transactions.where((transaction) {
           switch (_searchBy) {
             case 'amount':
-              // Convert amount to string for comparison
               return transaction['amount'].toString().contains(query);
             case 'date':
-              // Convert date to formatted string for comparison
               String formattedDate = DateFormat('yyyy-MM-dd')
                   .format((transaction['date'] as Timestamp).toDate());
               return formattedDate.contains(query);
@@ -549,7 +683,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     DataColumn(label: Text('Fecha de pago')),
                     DataColumn(label: Text('Saldo')),
                   ],
-                  rows: (filteredTransactions.isNotEmpty ? filteredTransactions : transactions).map((transaction) {
+                  rows: (filteredTransactions.isNotEmpty
+                          ? filteredTransactions
+                          : transactions)
+                      .map((transaction) {
                     return DataRow(
                       cells: [
                         DataCell(Row(
