@@ -36,7 +36,7 @@ class CxcPage extends StatelessWidget {
             ),
             ElevatedButton(
               onPressed: () {
-                FirebaseFirestore.instance.collection('cxp').doc(id).update({
+                FirebaseFirestore.instance.collection('cxc').doc(id).update({
                   'fecha': fechaController.text,
                   'nombre': nombreController.text,
                   'No.factura': facturaController.text,
@@ -56,7 +56,7 @@ class CxcPage extends StatelessWidget {
   }
 
   void _eliminarRegistro(String id, BuildContext context) {
-    FirebaseFirestore.instance.collection('cxp').doc(id).delete();
+    FirebaseFirestore.instance.collection('cxc').doc(id).delete();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Registro eliminado')),
     );
@@ -66,7 +66,7 @@ class CxcPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: StreamBuilder(
-        stream: FirebaseFirestore.instance.collection('cxp').snapshots(),
+        stream: FirebaseFirestore.instance.collection('cxc').snapshots(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
