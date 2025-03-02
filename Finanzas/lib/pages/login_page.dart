@@ -1,5 +1,6 @@
 import 'package:minimallogin/pages/hidden_drawer.dart';
 import 'package:flutter/material.dart';
+import 'package:minimallogin/pages/password_recovery.dart';
 import 'package:provider/provider.dart';
 import '../components/my_button.dart';
 import '../components/my_textfield.dart';
@@ -167,7 +168,14 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       GestureDetector(
-                        onTap: forgotPw,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RecuperarPasswordPage(),
+                            ),
+                          );
+                        },
                         child: Text(
                           '¿Olvidaste tu contraseña?',
                           style: TextStyle(

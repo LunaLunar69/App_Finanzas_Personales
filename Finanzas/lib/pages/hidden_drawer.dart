@@ -77,7 +77,7 @@ class _HiddenDrawer extends State<HiddenDrawer> {
           selectedStyle:
               TextStyle(color: Theme.of(context).colorScheme.primary),
         ),
-        AssetsPage(),
+        const AssetsPage(),
       ),
       ScreenHiddenDrawer(
         ItemHiddenMenu(

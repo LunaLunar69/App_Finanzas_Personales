@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CxcPage extends StatelessWidget {
+  const CxcPage({super.key});
   void _editarRegistro(String id, Map<String, dynamic> data, BuildContext context) {
     TextEditingController fechaController = TextEditingController(text: data['fecha'] ?? '');
     TextEditingController nombreController = TextEditingController(text: data['nombre'] ?? '');
@@ -95,11 +96,11 @@ class CxcPage extends StatelessWidget {
                   DataCell(Row(
                     children: [
                       IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blue),
+                        icon: const Icon(Icons.edit, color: Colors.blue),
                         onPressed: () => _editarRegistro(doc.id, data, context),
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () => _eliminarRegistro(doc.id, context),
                       ),
                     ],

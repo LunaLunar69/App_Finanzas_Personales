@@ -2,6 +2,61 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CxpPage extends StatelessWidget {
+  const CxpPage({super.key});
+
+  void _nuevoRegistro(String id, Map<String, dynamic> data, BuildContext context) {
+    TextEditingController fechaController = TextEditingController(text: data['fecha'] ?? '');
+    TextEditingController nombreController = TextEditingController(text: data['nombre'] ?? '');
+    TextEditingController facturaController = TextEditingController(text: data['No.factura'] ?? '');
+    TextEditingController importeController = TextEditingController(text: data['importe_total']?.toString() ?? '0.0');
+    TextEditingController saldoPagadoController = TextEditingController(text: data['saldo_pagado']?.toString() ?? '0.0');
+    TextEditingController saldoActualController = TextEditingController(text: data['saldo_actual']?.toString() ?? '0.0');
+    TextEditingController categoriaController = TextEditingController(text: data['categoria'] ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Agregar nuevo Registro'),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(controller: fechaController, decoration: const InputDecoration(labelText: 'Fecha')),
+                TextField(controller: nombreController, decoration: const InputDecoration(labelText: 'Nombre')),
+                TextField(controller: facturaController, decoration: const InputDecoration(labelText: 'No. Factura')),
+                TextField(controller: importeController, decoration: const InputDecoration(labelText: 'Importe Total')),
+                TextField(controller: saldoPagadoController, decoration: const InputDecoration(labelText: 'Saldo Pagado')),
+                TextField(controller: saldoActualController, decoration: const InputDecoration(labelText: 'Saldo Actual')),
+                TextField(controller: categoriaController, decoration: const InputDecoration(labelText: 'Categoría')),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                FirebaseFirestore.instance.collection('cxp').add({
+                  'fecha': fechaController.text,
+                  'nombre': nombreController.text,
+                  'No.factura': facturaController.text,
+                  'importe_total': double.tryParse(importeController.text) ?? 0.0,
+                  'saldo_pagado': double.tryParse(saldoPagadoController.text) ?? 0.0,
+                  'saldo_actual': double.tryParse(saldoActualController.text) ?? 0.0,
+                  'categoria': categoriaController.text,
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _editarRegistro(String id, Map<String, dynamic> data, BuildContext context) {
     TextEditingController fechaController = TextEditingController(text: data['fecha'] ?? '');
     TextEditingController nombreController = TextEditingController(text: data['nombre'] ?? '');
@@ -65,6 +120,15 @@ class CxpPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => _nuevoRegistro('', {}, context),
+          ),
+        ],
+      ),
       body: StreamBuilder(
         stream: FirebaseFirestore.instance.collection('cxp').snapshots(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
