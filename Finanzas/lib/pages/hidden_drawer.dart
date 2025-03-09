@@ -81,7 +81,7 @@ class _HiddenDrawer extends State<HiddenDrawer> {
       ),
       ScreenHiddenDrawer(
         ItemHiddenMenu(
-          name: 'C X P',
+          name: 'C U E N T A S  P O R  P A G A R',
           baseStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
           selectedStyle:
               TextStyle(color: Theme.of(context).colorScheme.primary),
@@ -90,7 +90,7 @@ class _HiddenDrawer extends State<HiddenDrawer> {
       ),
       ScreenHiddenDrawer(
         ItemHiddenMenu(
-          name: 'C X C',
+          name: 'C U E N T A S  P O R  C O B R A R',
           baseStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
           selectedStyle:
               TextStyle(color: Theme.of(context).colorScheme.primary),
