@@ -2,6 +2,7 @@ import 'package:minimallogin/pages/CXC/cxc.dart';
 import 'package:minimallogin/pages/CXP/cxp.dart';
 import 'package:minimallogin/pages/home_page.dart';
 import 'package:minimallogin/pages/ingresos/Ingresos.dart';
+import 'package:minimallogin/pages/reporte.dart';
 import 'package:minimallogin/pages/settings_page.dart';
 import 'package:minimallogin/pages/targetas/my_cards.dart';
 import 'package:minimallogin/pages/transacciones/transactions.dart';
@@ -86,7 +87,7 @@ class _HiddenDrawer extends State<HiddenDrawer> {
           selectedStyle:
               TextStyle(color: Theme.of(context).colorScheme.primary),
         ),
-        CxpPage(),
+        const CxpPage(),
       ),
       ScreenHiddenDrawer(
         ItemHiddenMenu(
@@ -95,7 +96,16 @@ class _HiddenDrawer extends State<HiddenDrawer> {
           selectedStyle:
               TextStyle(color: Theme.of(context).colorScheme.primary),
         ),
-        CxcPage(),
+        const CxcPage(),
+      ),
+      ScreenHiddenDrawer(
+        ItemHiddenMenu(
+          name: 'R E P O R T E',
+          baseStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
+          selectedStyle:
+              TextStyle(color: Theme.of(context).colorScheme.primary),
+        ),
+        const ReportePage(),
       ),
       ScreenHiddenDrawer(
         ItemHiddenMenu(
