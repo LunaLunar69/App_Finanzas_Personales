@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:minimallogin/querys/firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -22,6 +23,7 @@ class _IngresoFormState extends State<IngresoForm> {
   List<String> metodosPago = ['Contado', 'Tarjeta', 'Cheque', 'Agregar nuevo'];
 
   final FirestoreService _firestoreService = FirestoreService();
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
 
   Future<void> guardarIngreso() async {
     if (_dateController.text.isEmpty ||
@@ -35,7 +37,7 @@ class _IngresoFormState extends State<IngresoForm> {
     }
 
     try {
-      await _firestoreService.guardarIngreso({
+      await _firestoreService.guardarIngreso(userId, {
         'fecha': _dateController.text,
         'importe': _amountController.text,
         'descripcion': _descriptionController.text,

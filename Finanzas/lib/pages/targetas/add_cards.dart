@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_credit_card/flutter_credit_card.dart';
 import 'package:minimallogin/querys/firestore.dart';
@@ -31,10 +32,12 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
 
   final FirestoreService firestoreService =
       FirestoreService(); // Usa FirestoreService
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
+
 
   Future<void> saveCardToFirebase() async {
     if (formKey.currentState!.validate() && selectedBank != null) {
-      bool isDuplicate = await firestoreService.isDuplicateCard(cardNumber);
+      bool isDuplicate = await firestoreService.isDuplicateCard(userId, cardNumber);
 
       if (isDuplicate) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -48,6 +51,7 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
 
       try {
         await firestoreService.addCard(
+          userId: userId,
           bank: selectedBank!,
           cardHolderName: cardHolderName,
           cardNumber: cardNumber,

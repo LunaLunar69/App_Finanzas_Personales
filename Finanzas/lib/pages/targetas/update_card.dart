@@ -1,5 +1,6 @@
 
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:minimallogin/querys/firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_credit_card/flutter_credit_card.dart';
@@ -34,6 +35,7 @@ class _UpdateCardScreenState extends State<UpdateCardScreen> {
   ];
 
   final FirestoreService firestoreService = FirestoreService();
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
 
   @override
   void initState() {
@@ -50,6 +52,7 @@ class _UpdateCardScreenState extends State<UpdateCardScreen> {
     if (formKey.currentState!.validate() && selectedBank != null) {
       try {
         await firestoreService.updateCard(
+          userId: userId,
           docId: widget.cardId,
           bank: selectedBank!,
           cardHolderName: cardHolderName,

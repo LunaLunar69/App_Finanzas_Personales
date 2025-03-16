@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:minimallogin/querys/firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +16,8 @@ class TransactionsPage extends StatefulWidget {
 
 class _TransactionsPageState extends State<TransactionsPage> {
   final FirestoreService firestoreService = FirestoreService();
+  final categoriesStreamController = StreamController<List<String>>();
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
   List<Map<String, dynamic>> transactions = [];
   List<Map<String, dynamic>> filteredTransactions = [];
 
@@ -33,7 +36,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   );
 
   Future<void> _loadTransactions() async {
-    final loadedTransactions = await firestoreService.getTransactions();
+    final loadedTransactions = await firestoreService.getTransactions(userId);
     setState(() {
       transactions = loadedTransactions;
       filteredTransactions = loadedTransactions;
@@ -69,6 +72,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   Future<void> _showAddTransactionDialog() async {
+    final categoriesStreamController = StreamController<List<String>>.broadcast();
+    
     final TextEditingController conceptController = TextEditingController();
     final TextEditingController invoiceNumberController = TextEditingController();
     final TextEditingController importController = TextEditingController();
@@ -85,9 +90,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     DateTime selectedDate = DateTime.now();
     DateTime paymentDate = DateTime.now();
 
-    final categoriesStreamController = StreamController<List<String>>();
-
-    firestoreService.getCategories('sampleUser').listen((snapshot) {
+    firestoreService.getCategories(userId).listen((snapshot) {
       if (snapshot.exists) {
         final data = snapshot.data() as Map<String, dynamic>;
         final List<String> firebaseCategories = 
@@ -254,6 +257,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 }
 
                 await firestoreService.addTransaction(
+                  userId: userId,
                   date: selectedDate,
                   concept: conceptController.text,
                   invoiceNumber: invoiceNumberController.text,
@@ -467,6 +471,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 }
 
                 await firestoreService.updateTransaction(
+                  userId: userId,
                   docId: transaction['id'],
                   date: selectedDate,
                   concept: conceptController.text,
@@ -490,6 +495,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
         ),
       ),
     );
+
+    categoriesStreamController.close();
   }
   Future<void> _showAddCategoryDialog() async {
     final TextEditingController categoryController = TextEditingController();
@@ -549,7 +556,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
             TextButton(
               child: const Text('Eliminar'),
               onPressed: () async {
-                await firestoreService.deleteTransaction(transaction['id']);
+                await firestoreService.deleteTransaction(userId, transaction['id']);
                 _loadTransactions();
                 Navigator.of(context).pop();
               },

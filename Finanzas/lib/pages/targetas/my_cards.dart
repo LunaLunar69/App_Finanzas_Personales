@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:minimallogin/pages/targetas/add_cards.dart';
 import 'package:minimallogin/pages/targetas/update_card.dart';
 import 'package:minimallogin/querys/firestore.dart';
@@ -6,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_credit_card/flutter_credit_card.dart';
 
 class CardListPage extends StatefulWidget {
-  CardListPage({super.key});
+  const CardListPage({super.key});
 
   @override
   State<CardListPage> createState() => _CardListPageState();
@@ -14,6 +15,7 @@ class CardListPage extends StatefulWidget {
 
 class _CardListPageState extends State<CardListPage> {
   final FirestoreService firestoreService = FirestoreService();
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
   final TextEditingController _cashController = TextEditingController();
   double? currentBalance;
 
@@ -26,7 +28,7 @@ class _CardListPageState extends State<CardListPage> {
 
   Future<void> _loadCurrentBalance() async {
     try {
-      final balance = await firestoreService.getSaldoActual();
+      final balance = await firestoreService.getSaldoActual(userId);
       setState(() {
         currentBalance = balance;
       });
@@ -37,7 +39,7 @@ class _CardListPageState extends State<CardListPage> {
 
   Future<void> _checkFirstLaunch() async {
     try {
-      final saldoExists = await firestoreService.checkSaldoExists();
+      final saldoExists = await firestoreService.checkSaldoExists(userId);
       if (!saldoExists) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _showCashInputDialog();
@@ -51,7 +53,7 @@ class _CardListPageState extends State<CardListPage> {
   Future<void> _saveCashAmount(String cashAmount) async {
     try {
       final double amount = double.parse(cashAmount);
-      await firestoreService.setSaldoInicial(amount);
+      await firestoreService.setSaldoInicial(userId, amount);
       Navigator.of(context).pop();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,7 +75,7 @@ class _CardListPageState extends State<CardListPage> {
               const Text('Por favor, ingresa tu cantidad de efectivo actual:'),
               TextField(
                 controller: _cashController,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Cantidad de efectivo',
                   prefixIcon: Icon(Icons.attach_money),
@@ -109,7 +111,7 @@ class _CardListPageState extends State<CardListPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              firestoreService.deleteCard(docId);
+              firestoreService.deleteCard(userId, docId);
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
@@ -136,7 +138,7 @@ class _CardListPageState extends State<CardListPage> {
             children: [
               TextField(
                 controller: _cashController,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Nuevo saldo',
                   prefixIcon: Icon(Icons.attach_money),
@@ -157,7 +159,7 @@ class _CardListPageState extends State<CardListPage> {
                 if (_cashController.text.isNotEmpty) {
                   try {
                     final double amount = double.parse(_cashController.text);
-                    await firestoreService.updateSaldo(amount);
+                    await firestoreService.updateSaldo(userId, amount);
                     Navigator.of(context).pop();
                     _loadCurrentBalance();
                   } catch (e) {
@@ -186,7 +188,7 @@ class _CardListPageState extends State<CardListPage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CreditCardScreen()),
+                MaterialPageRoute(builder: (context) => const CreditCardScreen()),
               );
             },
           ),
@@ -196,7 +198,7 @@ class _CardListPageState extends State<CardListPage> {
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: firestoreService.getCards(),
+              stream: firestoreService.getCards(userId),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());

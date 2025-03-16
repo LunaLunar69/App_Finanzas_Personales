@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -12,6 +13,7 @@ class TransfersPage extends StatefulWidget {
 
 class _TransfersPageState extends State<TransfersPage> {
   final FirestoreService firestoreService = FirestoreService();
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
   List<Map<String, dynamic>> transfers = [];
   List<Map<String, dynamic>> filteredTransfers = [];
   List<String> cardHolders = [];
@@ -27,7 +29,7 @@ class _TransfersPageState extends State<TransfersPage> {
   }
 
   Future<void> _loadTransfers() async {
-    final loadedTransfers = await firestoreService.getTransfers();
+    final loadedTransfers = await firestoreService.getTransfers(userId);
     setState(() {
       transfers = loadedTransfers;
       filteredTransfers = loadedTransfers;
@@ -172,6 +174,7 @@ class _TransfersPageState extends State<TransfersPage> {
               }
 
               await firestoreService.updateTransfer(
+                userId: userId,
                 docId: transfer['id'],
                 date: selectedDate,
                 amount: double.tryParse(amountController.text) ?? 0,
@@ -290,6 +293,7 @@ class _TransfersPageState extends State<TransfersPage> {
               }
 
               await firestoreService.addTransfer(
+                userId: userId,
                 date: selectedDate,
                 amount: double.tryParse(amountController.text) ?? 0,
                 originCount: selectedOriginCount!,
@@ -333,7 +337,7 @@ class _TransfersPageState extends State<TransfersPage> {
             TextButton(
               child: const Text('Eliminar'),
               onPressed: () async {
-                await firestoreService.deleteTransfer(transfer['id']);
+                await firestoreService.deleteTransfer(userId, transfer['id']);
                 _loadTransfers();
                 Navigator.of(context).pop();
               },
