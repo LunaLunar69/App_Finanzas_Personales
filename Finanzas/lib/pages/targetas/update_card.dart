@@ -23,6 +23,7 @@ class _UpdateCardScreenState extends State<UpdateCardScreen> {
   bool isCvvFocused = false;
   late String cardType;
   String? selectedBank;
+  final TextEditingController balanceController = TextEditingController();
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final List<String> cardTypes = ['Crédito', 'Débito'];
@@ -46,10 +47,17 @@ class _UpdateCardScreenState extends State<UpdateCardScreen> {
     cvvCode = widget.cardData['cvvCode'] ?? '';
     cardType = widget.cardData['cardType'] ?? 'Crédito';
     selectedBank = widget.cardData['bank'];
+    balanceController.text = widget.cardData['balance'].toString();
   }
 
   Future<void> updateCardInFirebase() async {
     if (formKey.currentState!.validate() && selectedBank != null) {
+
+      double balance = 0.0;
+      if (balanceController.text.isNotEmpty) {
+        balance = double.tryParse(balanceController.text) ?? 0.0;
+      }
+
       try {
         await firestoreService.updateCard(
           userId: userId,
@@ -58,8 +66,8 @@ class _UpdateCardScreenState extends State<UpdateCardScreen> {
           cardHolderName: cardHolderName,
           cardNumber: cardNumber,
           cardType: cardType,
-          cvvCode: cvvCode,
           expiryDate: expiryDate,
+          balance: balance,
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -68,6 +76,8 @@ class _UpdateCardScreenState extends State<UpdateCardScreen> {
             backgroundColor: Colors.green,
           ),
         );
+        
+        await Future.delayed(const Duration(milliseconds: 500));
 
         Navigator.pop(context);
       } catch (e) {
@@ -102,9 +112,9 @@ class _UpdateCardScreenState extends State<UpdateCardScreen> {
               CreditCardWidget(
                 cardNumber: cardNumber,
                 expiryDate: expiryDate,
-                cardHolderName:
-                    cardHolderName.isEmpty ? 'CARDHOLDER NAME' : cardHolderName,
-                cvvCode: cvvCode,
+                cardHolderName:cardHolderName.isEmpty ? '' : cardHolderName,
+                isHolderNameVisible: true,
+                cvvCode: '000',
                 showBackView: isCvvFocused,
                 onCreditCardWidgetChange: (CreditCardBrand cardBrand) {},
               ), 
@@ -113,7 +123,8 @@ class _UpdateCardScreenState extends State<UpdateCardScreen> {
                 expiryDate: expiryDate,
                 cardHolderName: cardHolderName,
                 isHolderNameVisible: true,
-                cvvCode: cvvCode,
+                enableCvv: false,
+                cvvCode: '',
                 formKey: formKey,
                 onCreditCardModelChange: (CreditCardModel data) {
                   setState(() {
@@ -163,6 +174,11 @@ class _UpdateCardScreenState extends State<UpdateCardScreen> {
                   });
                 },
               ),
+              TextField(
+                  controller: balanceController,
+                  decoration: const InputDecoration(labelText: 'Saldo'),
+                  keyboardType: TextInputType.number,
+                ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: updateCardInFirebase,

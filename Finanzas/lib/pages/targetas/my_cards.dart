@@ -16,6 +16,8 @@ class CardListPage extends StatefulWidget {
 class _CardListPageState extends State<CardListPage> {
   final FirestoreService firestoreService = FirestoreService();
   final String userId = FirebaseAuth.instance.currentUser!.uid;
+  final TextEditingController cardBalanceController = TextEditingController();
+
   final TextEditingController _cashController = TextEditingController();
   double? currentBalance;
 
@@ -75,7 +77,8 @@ class _CardListPageState extends State<CardListPage> {
               const Text('Por favor, ingresa tu cantidad de efectivo actual:'),
               TextField(
                 controller: _cashController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Cantidad de efectivo',
                   prefixIcon: Icon(Icons.attach_money),
@@ -138,7 +141,8 @@ class _CardListPageState extends State<CardListPage> {
             children: [
               TextField(
                 controller: _cashController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Nuevo saldo',
                   prefixIcon: Icon(Icons.attach_money),
@@ -188,7 +192,8 @@ class _CardListPageState extends State<CardListPage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const CreditCardScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const CreditCardScreen()),
               );
             },
           ),
@@ -225,19 +230,29 @@ class _CardListPageState extends State<CardListPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: CreditCardWidget(
-                              cardNumber: cardData['cardNumber'] ??
-                                  '**** **** **** ****',
-                              expiryDate: cardData['expiryDate'] ?? 'N/A',
-                              cardHolderName:
-                                  cardData['cardHolderName'] ?? 'N/A',
-                              isHolderNameVisible: true,
-                              cvvCode: cardData['cvvCode'] ?? '***',
-                              showBackView: false,
-                              onCreditCardWidgetChange:
-                                  (CreditCardBrand brand) {},
-                            ),
-                          ),
+                              child: Column(
+                                children: [
+                                  
+                                  CreditCardWidget(
+                                    cardNumber: cardData['cardNumber'] ??
+                                        '**** **** **** ****',
+                                    expiryDate: cardData['expiryDate'] ?? 'N/A',
+                                    cardHolderName:
+                                        cardData['cardHolderName'] ?? 'N/A',
+                                    isHolderNameVisible: true,
+                                    cvvCode: '',
+                                    showBackView: false,
+                                    onCreditCardWidgetChange:
+                                        (CreditCardBrand brand) {},
+                                  ),
+                                  Text(
+                                    'Saldo: \$${(cardData['balance'] ?? 0.0).toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                    ),
+                                  ),
+                            ],
+                          )),
                           Column(
                             children: [
                               IconButton(

@@ -12,6 +12,7 @@ class CreditCardScreen extends StatefulWidget {
 }
  
 class _CreditCardScreenState extends State<CreditCardScreen> {
+  
   String cardNumber = '';
   String expiryDate = '';
   String cardHolderName = '';
@@ -19,6 +20,7 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
   bool isCvvFocused = false;
   String cardType = 'Crédito';
   String? selectedBank;
+  final TextEditingController initialBalanceController = TextEditingController();
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final List<String> cardTypes = ['Crédito', 'Débito'];
@@ -37,6 +39,7 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
 
   Future<void> saveCardToFirebase() async {
     if (formKey.currentState!.validate() && selectedBank != null) {
+
       bool isDuplicate = await firestoreService.isDuplicateCard(userId, cardNumber);
 
       if (isDuplicate) {
@@ -49,6 +52,11 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
         return;
       }
 
+      double initialBalance = 0.0;
+      if (initialBalanceController.text.isNotEmpty) {
+        initialBalance = double.tryParse(initialBalanceController.text) ?? 0.0;
+      }
+
       try {
         await firestoreService.addCard(
           userId: userId,
@@ -56,8 +64,8 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
           cardHolderName: cardHolderName,
           cardNumber: cardNumber,
           cardType: cardType,
-          cvvCode: cvvCode,
           expiryDate: expiryDate,
+          initialBalance: initialBalance
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -67,14 +75,9 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
           ),
         );
 
-        setState(() {
-          cardNumber = '';
-          expiryDate = '';
-          cardHolderName = '';
-          cvvCode = '';
-          selectedBank = null;
-          cardType = 'Crédito';
-        });
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        Navigator.pop(context);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -107,9 +110,9 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
               CreditCardWidget(
                 cardNumber: cardNumber,
                 expiryDate: expiryDate,
-                cardHolderName:
-                    cardHolderName.isEmpty ? 'CARDHOLDER NAME' : cardHolderName,
-                cvvCode: cvvCode,
+                cardHolderName: cardHolderName.isEmpty ? '' : cardHolderName,
+                isHolderNameVisible: true,
+                cvvCode: '000',
                 showBackView: isCvvFocused,
                 onCreditCardWidgetChange: (CreditCardBrand cardBrand) {},
               ),
@@ -118,17 +121,16 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
                 expiryDate: expiryDate,
                 cardHolderName: cardHolderName,
                 isHolderNameVisible: true,
-                cvvCode: cvvCode,
+                enableCvv: false,
                 formKey: formKey,
                 onCreditCardModelChange: (CreditCardModel data) {
                   setState(() {
                     cardNumber = data.cardNumber;
                     expiryDate = data.expiryDate;
                     cardHolderName = data.cardHolderName;
-                    cvvCode = data.cvvCode;
                     isCvvFocused = data.isCvvFocused;
                   });
-                },
+                }, cvvCode: '',
               ),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
@@ -168,6 +170,11 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
                   });
                 },
               ),
+              TextField(
+                  controller: initialBalanceController,
+                  decoration: const InputDecoration(labelText: 'Saldo inicial'),
+                  keyboardType: TextInputType.number,
+                ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: saveCardToFirebase,

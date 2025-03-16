@@ -65,8 +65,8 @@ class FirestoreService {
     required String cardHolderName,
     required String cardNumber,
     required String cardType,
-    required String cvvCode,
     required String expiryDate,
+    required double initialBalance,
   }) async {
     try {
       final cards = getCardsCollection(userId);
@@ -75,9 +75,9 @@ class FirestoreService {
         'cardHolderName': cardHolderName,
         'cardNumber': cardNumber,
         'cardType': cardType,
-        'cvvCode': cvvCode,
         'expiryDate': expiryDate,
         'timestamp': FieldValue.serverTimestamp(),
+        'balance': initialBalance,
       });
     } catch (e) {
       throw Exception('Error adding card: $e');
@@ -107,8 +107,8 @@ class FirestoreService {
     required String cardHolderName,
     required String cardNumber,
     required String cardType,
-    required String cvvCode,
     required String expiryDate,
+    required double balance,
   }) async {
     try {
       final cards = getCardsCollection(userId);
@@ -117,8 +117,8 @@ class FirestoreService {
         'cardHolderName': cardHolderName,
         'cardNumber': cardNumber,
         'cardType': cardType,
-        'cvvCode': cvvCode,
         'expiryDate': expiryDate,
+        'balance': balance,
       });
     } catch (e) {
       throw Exception('Error updating card: $e');
