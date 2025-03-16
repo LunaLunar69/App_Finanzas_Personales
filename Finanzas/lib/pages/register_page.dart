@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:minimallogin/pages/hidden_drawer.dart';
 import '../components/my_button.dart';
 import '../components/my_textfield.dart';
 import 'package:minimallogin/helper/helper_functions.dart';
@@ -21,6 +22,26 @@ class _RegisterPageState extends State<RegisterPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
+
+
+  @override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    checkUserLoggedIn();
+  });
+}
+
+void checkUserLoggedIn() {
+  if (FirebaseAuth.instance.currentUser != null) {
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HiddenDrawer()),
+      );
+    }
+  }
+}
 
   // Método para registrar usuario
  void register() async {
