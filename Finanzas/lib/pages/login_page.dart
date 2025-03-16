@@ -1,11 +1,11 @@
-import 'package:minimallogin/pages/hidden_drawer.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+//import 'package:google_sign_in/google_sign_in.dart';
+import 'package:minimallogin/pages/hidden_drawer.dart';
 import 'package:minimallogin/pages/password_recovery.dart';
-import 'package:provider/provider.dart';
 import '../components/my_button.dart';
 import '../components/my_textfield.dart';
 import '../components/my_square_tile.dart';
-import '../theme/theme_provider.dart';
 
 class LoginPage extends StatefulWidget {
   final void Function()? onTap;
@@ -17,99 +17,80 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // controladores de texto
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
-  // Aqui vamos a poner el metodo de logeo por firebase
-  void login() {
-    // primero se realiza el proceso de autenticacion
+  @override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    checkUserLoggedIn();
+  });
+}
 
-    // una vez autenticado el usario lo redirigimos a la pagina de inicio
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const HiddenDrawer(),
-      ),
-    );
+void checkUserLoggedIn() {
+  if (FirebaseAuth.instance.currentUser != null) {
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HiddenDrawer()),
+      );
+    }
   }
+}
 
-  // aqui vamos a poner el metodo de recuperacion de contraseña
-  void forgotPw() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text("Aun no implementado :(."),
-      ),
+  // Función para iniciar sesión con Firebase
+  void login() async {
+  try {
+    UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: emailController.text.trim(),
+      password: passwordController.text.trim(),
     );
+
+    User? user = userCredential.user;
+
+    if (!mounted) return;
+    if (user != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HiddenDrawer()),
+      );
+    }
+  } on FirebaseAuthException catch (e) {
+    if (!mounted) return;
+    String message = "Error al iniciar sesión";
+    if (e.code == 'user-not-found') {
+      message = "Usuario no encontrado";
+    } else if (e.code == 'wrong-password') {
+      message = "Contraseña incorrecta";
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
+}
 
-  // google sign in
-  void googleSignIn() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text("Iniciar con Google?"),
-        actions: [
-          // cancel
-          MaterialButton(
-            color: Theme.of(context).colorScheme.secondary,
-            elevation: 0,
-            child: const Text("Cancelar"),
-            onPressed: () => Navigator.pop(context),
-          ),
+  // Función para iniciar sesión con Google
+  /*
+  Future<void> googleSignIn() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return;
 
-          // yes
-          MaterialButton(
-            color: Theme.of(context).colorScheme.secondary,
-            elevation: 0,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const HiddenDrawer(),
-              ),
-            ),
-            child: const Text("Si"),
-          ),
-        ],
-      ),
-    );
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HiddenDrawer()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error al iniciar sesión con Google")));
+    }
   }
-
-  // apple sign in
-  void appleSignIn() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text("Iniciar con Apple ID?"),
-        actions: [
-          // cancel
-          MaterialButton(
-            color: Theme.of(context).colorScheme.secondary,
-            elevation: 0,
-            child: const Text("Cancelar"),
-            onPressed: () => Navigator.pop(context),
-          ),
-
-          // yes
-          MaterialButton(
-            color: Theme.of(context).colorScheme.secondary,
-            elevation: 0,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const HiddenDrawer(),
-              ),
-            ),
-            child: const Text("Si"),
-          ),
-        ],
-      ),
-    );
-  }
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +104,7 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 const SizedBox(height: 50),
 
-                // logo cachondo
+                // Logo
                 Image.asset(
                   'lib/images/unlock.png',
                   height: 100,
@@ -132,7 +113,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 50),
 
-                // Mensaje de bienvenida todo uwu
+                // Mensaje de bienvenida
                 Text(
                   '¡Bienvenido de nuevo, te hemos extrañado!',
                   style: TextStyle(
@@ -140,10 +121,10 @@ class _LoginPageState extends State<LoginPage> {
                     fontSize: 16,
                   ),
                 ),
- 
+
                 const SizedBox(height: 25),
 
-                // email textfield
+                // Campo de email
                 MyTextField(
                   controller: emailController,
                   hintText: 'Email',
@@ -152,7 +133,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 10),
 
-                // password textfield
+                // Campo de contraseña
                 MyTextField(
                   controller: passwordController,
                   hintText: 'Contraseña',
@@ -161,7 +142,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 10),
 
-                // link para recuperar contraseña
+                // Link para recuperar contraseña
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 25.0),
                   child: Row(
@@ -171,9 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => const RecuperarPasswordPage(),
-                            ),
+                            MaterialPageRoute(builder: (context) =>  const ResetPasswordPage()),
                           );
                         },
                         child: Text(
@@ -190,15 +169,15 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 25),
 
-                // Boton de inicio
+                // Botón de inicio de sesión
                 MyButton(
-                  onTap: login, 
-                  text: "Iniciar Sesion",
+                  onTap: login,
+                  text: "Iniciar Sesión",
                 ),
 
                 const SizedBox(height: 25),
 
-                // Otros metodos de inicio
+                // Línea divisoria
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 25.0),
                   child: Row(
@@ -229,30 +208,15 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 25),
 
-                // google + apple botones de inicio de sesión
+                // Botón de inicio con Google
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // google button
                     SquareTile(
-                      onTap: googleSignIn,
+                      onTap: /*googleSignIn*/ (){},
                       child: Image.asset(
                         'lib/images/google.png',
                         height: 25,
-                      ),
-                    ),
-
-                    const SizedBox(width: 25),
-
-                    // apple button
-                    SquareTile(
-                      onTap: appleSignIn,
-                      child: Image.asset(
-                        'lib/images/apple.png',
-                        height: 25,
-                        color: Provider.of<ThemeProvider>(context).isDarkMode
-                            ? Colors.grey.shade400
-                            : Colors.black,
                       ),
                     ),
                   ],
@@ -266,8 +230,7 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     Text(
                       '¿No eres miembro?',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
                     ),
                     const SizedBox(width: 4),
                     GestureDetector(
@@ -281,7 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),

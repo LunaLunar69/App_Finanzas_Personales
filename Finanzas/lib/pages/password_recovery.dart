@@ -1,68 +1,35 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
-class RecuperarPasswordPage extends StatefulWidget {
-  const RecuperarPasswordPage({super.key});
+class ResetPasswordPage extends StatefulWidget {
+  const ResetPasswordPage({super.key});
 
   @override
-  RecuperarPasswordPageState createState() => RecuperarPasswordPageState();
+  ResetPasswordPageState createState() => ResetPasswordPageState();
 }
 
-class RecuperarPasswordPageState extends State<RecuperarPasswordPage> {
-  final _emailController = TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+class ResetPasswordPageState extends State<ResetPasswordPage> {
+  final TextEditingController emailController = TextEditingController();
 
-  // Función para enviar el correo de recuperación
-  void _enviarRecuperacion() async {
-    String email = _emailController.text.trim();
-    if (email.isNotEmpty) {
-      try {
-        await _auth.sendPasswordResetEmail(email: email);
-        // Mostrar diálogo de confirmación
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Correo Enviado'),
-            content: Text('Se ha enviado un correo de recuperación a $email.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Aceptar'),
-              ),
-            ],
-          ),
+  Future<void> resetPassword() async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: emailController.text.trim(),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Enlace de recuperación enviado a tu correo")),
         );
-      } catch (e) {
-        // Manejo de errores y mostrar mensaje
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Error'),
-            content: Text(e.toString()),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Aceptar'),
-              ),
-            ],
-          ),
+
+        Navigator.pop(context); // Regresar a la pantalla anterior
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: ${e.toString()}")),
         );
       }
-    } else {
-      // Si el campo email está vacío, se muestra un error
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error'),
-          content: const Text('Por favor ingresa un email válido.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Aceptar'),
-            ),
-          ],
-        ),
-      );
     }
   }
 
@@ -70,26 +37,47 @@ class RecuperarPasswordPageState extends State<RecuperarPasswordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Recuperar Contraseña'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(""),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Campo de texto para el email
+            const Text(
+              "¿Has olvidado tu contraseña?",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "Le enviaremos un correo electrónico con un enlace para restablecer su contraseña, ingrese el correo electrónico asociado con su cuenta a continuación.",
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 20),
             TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
+              controller: emailController,
               decoration: const InputDecoration(
-                labelText: 'Email',
-                hintText: 'Ingresa tu correo electrónico',
+                labelText: "Su dirección de correo electrónico...",
+                hintText: "Introduce tu correo electrónico...",
+                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 20),
-            // Botón para iniciar el proceso de recuperación
             ElevatedButton(
-              onPressed: _enviarRecuperacion,
-              child: const Text('Recuperar Contraseña'),
+              onPressed: resetPassword,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Text("Enviar enlace", style: TextStyle(fontSize: 16), selectionColor: Colors.white,),
             ),
           ],
         ),

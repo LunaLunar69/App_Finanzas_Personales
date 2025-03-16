@@ -1,9 +1,9 @@
-import 'package:minimallogin/helper/helper_functions.dart';
-import 'package:minimallogin/pages/hidden_drawer.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../components/my_button.dart';
 import '../components/my_textfield.dart';
+import 'package:minimallogin/helper/helper_functions.dart';
 
 class RegisterPage extends StatefulWidget {
   final void Function()? onTap;
@@ -17,62 +17,67 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   // Controladores de texto
   final nombreController = TextEditingController();
-
   final apellidosController = TextEditingController();
-
   final emailController = TextEditingController();
-
   final passwordController = TextEditingController();
-
   final confirmPasswordController = TextEditingController();
 
-  // metodo de registro todo cachondo con firebase
-  void register() async{
-    // Aqui se va a crear la cuenta y el documeto con los datos del usuario
+  // Método para registrar usuario
+ void register() async {
+  showDialog(
+    context: context,
+    builder: (context) => const Center(child: CircularProgressIndicator()),
+  );
 
-    // show dialog circle
-    showDialog(
-      context: context,
-       builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-       ),
+  if (passwordController.text != confirmPasswordController.text) {
+    if (mounted) {
+      Navigator.pop(context); // Cerrar loading de forma segura
+    }
+    displayMesaageToUser("¡Las contraseñas no coinciden!", context);
+    return;
+  }
+
+  try {
+    UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      email: emailController.text.trim(),
+      password: passwordController.text.trim(),
     );
 
-    //match de las contraseñas
-    if(passwordController.text != confirmPasswordController.text){
-      //pop loading circle
-      Navigator.pop(context);
+    String uid = userCredential.user!.uid;
 
-      //show error message to user
-      displayMesaageToUser("¡las contraseñas no coiciden!", context);
-    }else{
-      try{
-      // crear usuario
-      UserCredential? userCredential =
-       await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailController.text,
-         password: passwordController.text,
-      );
+    await FirebaseFirestore.instance.collection("usuarios").doc(uid).set({
+      "nombre": nombreController.text.trim(),
+      "apellidos": apellidosController.text.trim(),
+      "email": emailController.text.trim(),
+      "created_time": Timestamp.now(),
+      "uid": uid
+    });
 
-      //pop loading circle
-      Navigator.pop(context);
-    } on FirebaseAuthException catch (e){
-      //pop loading circle
-      Navigator.pop(context);
-
-      //display error mesage to user
-      displayMesaageToUser(e.code, context);
+    if (mounted) {
+      Navigator.pop(context); // Cerrar loading de forma segura
+    }
+    displayMesaageToUser("¡Registro exitoso!", context);
+  } on FirebaseAuthException catch (e) {
+    if (mounted) {
+      Navigator.pop(context); // Cerrar loading de forma segura
     }
 
-    // Una vez creado se le va a mandar un codigo de verificacion y se le redirigira a el inicio de sesion
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const HiddenDrawer(),
-        ),
-      );
-    }   
+    String message = "Error al registrarse";
+    if (e.code == 'email-already-in-use') {
+      message = "El correo ya está en uso.";
+    } else if (e.code == 'weak-password') {
+      message = "La contraseña es demasiado débil.";
+    }
+
+    displayMesaageToUser(message, context);
+  } catch (e) {
+    if (mounted) {
+      Navigator.pop(context); // Cerrar loading de forma segura
+    }
+    displayMesaageToUser("Ocurrió un error inesperado.", context);
+    print("Error desconocido: $e");
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -85,102 +90,40 @@ class _RegisterPageState extends State<RegisterPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 50),
-
-                // logo
-                Image.asset(
-                  'lib/images/unlock.png',
-                  height: 100,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-
+                Image.asset('lib/images/unlock.png', height: 100, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(height: 50),
-
-                // create una cuenta cachonda!
-                Text(
-                  'Creemos una cuenta para ti',
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                    fontSize: 16,
-                  ),
-                ),
-
+                Text('Creemos una cuenta para ti', style: TextStyle(color: Colors.grey[700], fontSize: 16)),
                 const SizedBox(height: 25),
 
-                // nombre textfield
-                MyTextField(
-                  controller: nombreController,
-                  hintText: 'Nombre(s)',
-                  obscureText: false,
-                ),
-
+                // Campos de texto
+                MyTextField(controller: nombreController, hintText: 'Nombre(s)', obscureText: false),
                 const SizedBox(height: 10),
-
-                // apellidos textfield
-                MyTextField(
-                  controller: apellidosController,
-                  hintText: 'Apellido(s)',
-                  obscureText: false,
-                ),
-
+                MyTextField(controller: apellidosController, hintText: 'Apellido(s)', obscureText: false),
                 const SizedBox(height: 10),
-
-                // email textfield
-                MyTextField(
-                  controller: emailController,
-                  hintText: 'Email',
-                  obscureText: false,
-                ),
-
+                MyTextField(controller: emailController, hintText: 'Email', obscureText: false),
                 const SizedBox(height: 10),
-
-                // password textfield
-                MyTextField(
-                  controller: passwordController,
-                  hintText: 'Contraseña',
-                  obscureText: true,
-                ),
-
+                MyTextField(controller: passwordController, hintText: 'Contraseña', obscureText: true),
                 const SizedBox(height: 10),
-
-                // confirm password textfield
-                MyTextField(
-                  controller: confirmPasswordController,
-                  hintText: 'Confirmar Contraseña',
-                  obscureText: true,
-                ),
-
+                MyTextField(controller: confirmPasswordController, hintText: 'Confirmar Contraseña', obscureText: true),
                 const SizedBox(height: 25),
 
-                // boton de registro
-                MyButton(
-                  onTap: register,
-                  text: "Registrarse",
-                ),
-
+                // Botón de registro
+                MyButton(onTap: register, text: "Registrarse"),
                 const SizedBox(height: 50),
 
-                // por si ya tiene cuenta
+                // Enlace a iniciar sesión
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      'Ya esta registrado?',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary),
-                    ),
+                    Text('¿Ya está registrado?', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
                     const SizedBox(width: 4),
                     GestureDetector(
                       onTap: widget.onTap,
-                      child: const Text(
-                        'Inicia sesión ahora',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: const Text('Inicia sesión ahora', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ],
-                )
-              ], 
+                ),
+              ],
             ),
           ),
         ),
