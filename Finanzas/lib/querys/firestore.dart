@@ -298,20 +298,66 @@ class FirestoreService {
     required String userId,
     required DateTime date,
     required double amount,
+    required String idOriginCount,
+    required String idDestinyCount,
     required String originCount,
     required String destinyCount,
   }) async {
     try {
-      final transfers = getTransfersCollection(userId);
-      await transfers.add({
-        'date': date,
-        'amount': amount,
-        'originCount': originCount,
-        'destinyCount': destinyCount,
-        'timestamp': FieldValue.serverTimestamp(),
+      final cardsCollection = getCardsCollection(userId);
+      final transfersCollection = getTransfersCollection(userId);
+
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final originDocRef = cardsCollection.doc(idOriginCount);
+        final originDocSnapshot = await transaction.get(originDocRef);
+
+        if (!originDocSnapshot.exists) {
+          throw Exception('La cuenta de origen no existe');
+        }
+
+        final double currentBalance =
+            originDocSnapshot.get('balance') as double;
+
+        //verify theres enough money lol
+        if (currentBalance < amount) {
+          throw Exception(
+              'Fondos insuficientes en la cuenta de origen. Balance: $currentBalance, Monto a transferir: $amount');
+        }
+
+        final destinyDocRef = cardsCollection.doc(idDestinyCount);
+        final destinyDocSnapshot = await transaction.get(destinyDocRef);
+
+        if (!destinyDocSnapshot.exists) {
+          throw Exception('La cuenta de destino no existe');
+        }
+
+        final double destinyBalance =
+            destinyDocSnapshot.get('balance') as double;
+
+        //upate the balance field in both account cards
+        transaction.update(originDocRef, {
+          'balance': currentBalance - amount,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+
+        transaction.update(destinyDocRef, {
+          'balance': destinyBalance + amount,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+
+        transaction.set(transfersCollection.doc(), {
+          'date': date,
+          'amount': amount,
+          'idOriginCount': idOriginCount,
+          'idDestinyCount': idDestinyCount,
+          'originCount': originCount,
+          'destinyCount': destinyCount,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
       });
     } catch (e) {
-      throw Exception('Error adding transaction: $e');
+      // Capturar y relanzar la excepción con un mensaje descriptivo
+      throw Exception('Error en la transferencia: $e');
     }
   }
 
@@ -320,28 +366,190 @@ class FirestoreService {
     required String docId,
     required DateTime date,
     required double amount,
+    required String idOriginCount,
+    required String idDestinyCount,
     required String originCount,
     required String destinyCount,
   }) async {
     try {
-      final transfers = getTransfersCollection(userId);
-      await transfers.doc(docId).update({
-        'date': date,
-        'amount': amount,
-        'originCount': originCount,
-        'destinyCount': destinyCount,
+      final cardsCollection = getCardsCollection(userId);
+      final transfersCollection = getTransfersCollection(userId);
+      final transferDocRef = transfersCollection.doc(docId);
+
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final transferSnapshot = await transaction.get(transferDocRef);
+
+        if (!transferSnapshot.exists) {
+          throw Exception('La transferencia no existe');
+        }
+
+        final previousData = transferSnapshot.data() as Map<String, dynamic>;
+        final double previousAmount = previousData['amount'] as double;
+        final String previousOriginId = previousData['idOriginCount'] as String;
+        final String previousDestinyId =
+            previousData['idDestinyCount'] as String;
+
+        final bool accountsChanged = previousOriginId != idOriginCount ||
+            previousDestinyId != idDestinyCount;
+
+        final originDocRef = cardsCollection.doc(idOriginCount);
+        final destinyDocRef = cardsCollection.doc(idDestinyCount);
+
+        final originSnapshot = await transaction.get(originDocRef);
+        final destinySnapshot = await transaction.get(destinyDocRef);
+
+        if (!originSnapshot.exists || !destinySnapshot.exists) {
+          throw Exception('Una o ambas cuentas no existen');
+        }
+
+        DocumentReference? previousOriginDocRef;
+        DocumentReference? previousDestinyDocRef;
+        DocumentSnapshot? previousOriginSnapshot;
+        DocumentSnapshot? previousDestinySnapshot;
+
+        if (accountsChanged) {
+          previousOriginDocRef = cardsCollection.doc(previousOriginId);
+          previousDestinyDocRef = cardsCollection.doc(previousDestinyId);
+
+          previousOriginSnapshot = await transaction.get(previousOriginDocRef);
+          previousDestinySnapshot =
+              await transaction.get(previousDestinyDocRef);
+
+          if (!previousOriginSnapshot.exists ||
+              !previousDestinySnapshot.exists) {
+            throw Exception('Una o ambas cuentas anteriores no existen');
+          }
+        }
+
+        double originBalance = originSnapshot.get('balance') as double;
+        double destinyBalance = destinySnapshot.get('balance') as double;
+
+        //if the accounts have changed, revert the changes
+        if (accountsChanged) {
+          double previousOriginBalance =
+              previousOriginSnapshot!.get('balance') as double;
+          double previousDestinyBalance =
+              previousDestinySnapshot!.get('balance') as double;
+
+          transaction.update(previousOriginDocRef!, {
+            'balance': previousOriginBalance + previousAmount,
+            'lastUpdated': FieldValue.serverTimestamp(),
+          });
+
+          transaction.update(previousDestinyDocRef!, {
+            'balance': previousDestinyBalance - previousAmount,
+            'lastUpdated': FieldValue.serverTimestamp(),
+          });
+        } else {
+          double amountDifference = amount - previousAmount;
+
+          //verify if theres enough money XD
+          if (amountDifference > 0 && originBalance < amountDifference) {
+            throw Exception(
+                'Fondos insuficientes para aumentar el monto de la transferencia');
+          }
+          originBalance -= amountDifference;
+          destinyBalance += amountDifference;
+
+          transaction.update(originDocRef, {
+            'balance': originBalance,
+            'lastUpdated': FieldValue.serverTimestamp(),
+          });
+
+          transaction.update(destinyDocRef, {
+            'balance': destinyBalance,
+            'lastUpdated': FieldValue.serverTimestamp(),
+          });
+
+          transaction.update(transferDocRef, {
+            'date': date,
+            'amount': amount,
+            'originCount': originCount,
+            'destinyCount': destinyCount,
+          });
+
+          return;
+        }
+
+        if (originBalance < amount) {
+          throw Exception('Fondos insuficientes en la cuenta de origen');
+        }
+
+        //update the balance in the correspondant card account
+        transaction.update(originDocRef, {
+          'balance': originBalance - amount,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+
+        transaction.update(destinyDocRef, {
+          'balance': destinyBalance + amount,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+
+        transaction.update(transferDocRef, {
+          'date': date,
+          'amount': amount,
+          'idOriginCount': idOriginCount,
+          'idDestinyCount': idDestinyCount,
+          'originCount': originCount,
+          'destinyCount': destinyCount,
+        });
       });
     } catch (e) {
-      throw Exception('Error updating transaction: $e');
+      throw Exception('Error al actualizar la transferencia: $e');
     }
   }
 
-  Future<void> deleteTransfer(String userId, String docId) async {
+  Future<void> deleteTransfer({
+    required String userId,
+    required String docId,
+  }) async {
     try {
-      final transfers = getTransfersCollection(userId);
-      await transfers.doc(docId).delete();
+      final cardsCollection = getCardsCollection(userId);
+      final transfersCollection = getTransfersCollection(userId);
+      final transferDocRef = transfersCollection.doc(docId);
+
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final transferSnapshot = await transaction.get(transferDocRef);
+
+        if (!transferSnapshot.exists) {
+          throw Exception('La transferencia no existe');
+        }
+
+        final transferData = transferSnapshot.data() as Map<String, dynamic>;
+        final double amount = transferData['amount'] as double;
+        final String idOriginCount = transferData['idOriginCount'] as String;
+        final String idDestinyCount = transferData['idDestinyCount'] as String;
+
+        final originDocRef = cardsCollection.doc(idOriginCount);
+        final destinyDocRef = cardsCollection.doc(idDestinyCount);
+
+        final originSnapshot = await transaction.get(originDocRef);
+        final destinySnapshot = await transaction.get(destinyDocRef);
+
+        if (!originSnapshot.exists || !destinySnapshot.exists) {
+          throw Exception('Una o ambas cuentas no existen');
+        }
+
+        //get balance data from both accounts
+        double originBalance = originSnapshot.get('balance') as double;
+        double destinyBalance = destinySnapshot.get('balance') as double;
+
+        //revert the transfer
+        transaction.update(originDocRef, {
+          'balance': originBalance + amount,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+
+        transaction.update(destinyDocRef, {
+          'balance': destinyBalance - amount,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+
+        transaction.delete(transferDocRef);
+      });
     } catch (e) {
-      throw Exception('Error deleting transaction: $e');
+      throw Exception('Error al eliminar la transferencia: $e');
     }
   }
 
@@ -372,7 +580,8 @@ class FirestoreService {
   }
 
   //arath's part lol
-  Future<void> guardarIngreso(String userId, Map<String, dynamic> ingresoData) async {
+  Future<void> guardarIngreso(
+      String userId, Map<String, dynamic> ingresoData) async {
     try {
       final _ingresosCollection = getIngresosCollection(userId);
       await _ingresosCollection.add(ingresoData);
