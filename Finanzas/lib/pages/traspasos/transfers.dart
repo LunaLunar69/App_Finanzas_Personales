@@ -17,6 +17,7 @@ class _TransfersPageState extends State<TransfersPage> {
   List<Map<String, dynamic>> transfers = [];
   List<Map<String, dynamic>> filteredTransfers = [];
   List<String> cardHolders = [];
+  List<String> idAccounts = [];
 
   final TextEditingController _searchController = TextEditingController();
   String _searchBy = 'amount'; // Campo de búsqueda por defecto
@@ -37,13 +38,17 @@ class _TransfersPageState extends State<TransfersPage> {
   }
 
   Future<void> _loadCardHolders() async {
-    final QuerySnapshot querySnapshot =
-        await FirebaseFirestore.instance.collection('tarjetas').get();
+    final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('tarjetas')
+        .get();
 
     setState(() {
       cardHolders = querySnapshot.docs
           .map((doc) => doc['cardHolderName'] as String)
           .toList();
+      idAccounts = querySnapshot.docs.map((doc) => doc.id).toList();
     });
   }
 
@@ -74,6 +79,8 @@ class _TransfersPageState extends State<TransfersPage> {
     final TextEditingController amountController =
         TextEditingController(text: transfer['amount']?.toString() ?? '0');
 
+    String? selectedOriginAccountId = transfer['idOriginCount'];
+    String? selectedDestinyAccountId = transfer['idDestinyCount'];
     String? selectedOriginCount = transfer['originCount'];
     String? selectedDestinyCount = transfer['destinyCount'];
     DateTime selectedDate = (transfer['date'] as Timestamp).toDate();
@@ -81,7 +88,7 @@ class _TransfersPageState extends State<TransfersPage> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Editar Transferencia'),
+        title: const Text('Editar Transpaso'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -91,16 +98,22 @@ class _TransfersPageState extends State<TransfersPage> {
                   labelText: 'Cuenta de Origen',
                   border: OutlineInputBorder(),
                 ),
-                value: selectedOriginCount,
-                items: cardHolders.map((String number) {
+                value: selectedOriginAccountId,
+                items: List.generate(cardHolders.length, (index) {
                   return DropdownMenuItem<String>(
-                    value: number,
-                    child: Text(number),
+                    value: idAccounts[index],
+                    child: Text(cardHolders[index]),
                   );
-                }).toList(),
+                }),
                 onChanged: (String? newValue) {
                   setState(() {
-                    selectedOriginCount = newValue;
+                    selectedOriginAccountId = newValue;
+                    if (newValue != null) {
+                      int index = idAccounts.indexOf(newValue);
+                      if (index != -1) {
+                        selectedOriginCount = cardHolders[index];
+                      }
+                    }
                   });
                 },
               ),
@@ -109,16 +122,22 @@ class _TransfersPageState extends State<TransfersPage> {
                   labelText: 'Cuenta de Destino',
                   border: OutlineInputBorder(),
                 ),
-                value: selectedDestinyCount,
-                items: cardHolders.map((String number) {
+                value: selectedDestinyAccountId,
+                items: List.generate(cardHolders.length, (index) {
                   return DropdownMenuItem<String>(
-                    value: number,
-                    child: Text(number),
+                    value: idAccounts[index],
+                    child: Text(cardHolders[index]),
                   );
-                }).toList(),
+                }),
                 onChanged: (String? newValue) {
                   setState(() {
-                    selectedDestinyCount = newValue;
+                    selectedDestinyAccountId = newValue;
+                    if (newValue != null) {
+                      int index = idAccounts.indexOf(newValue);
+                      if (index != -1) {
+                        selectedDestinyCount = cardHolders[index];
+                      }
+                    }
                   });
                 },
               ),
@@ -173,17 +192,33 @@ class _TransfersPageState extends State<TransfersPage> {
                 return;
               }
 
-              await firestoreService.updateTransfer(
-                userId: userId,
-                docId: transfer['id'],
-                date: selectedDate,
-                amount: double.tryParse(amountController.text) ?? 0,
-                originCount: selectedOriginCount!,
-                destinyCount: selectedDestinyCount!,
-              );
+              try {
+                await firestoreService.addTransfer(
+                  userId: userId,
+                  date: selectedDate,
+                  amount: double.tryParse(amountController.text) ?? 0,
+                  idOriginCount: selectedOriginAccountId!,
+                  idDestinyCount: selectedDestinyAccountId!,
+                  originCount: selectedOriginCount!,
+                  destinyCount: selectedDestinyCount!,
+                );
 
-              _loadTransfers();
-              Navigator.pop(context);
+                _loadTransfers();
+                Navigator.pop(context);
+              } catch (e) {
+                Navigator.pop(context);
+
+                String errorMessage = e.toString();
+
+                if (errorMessage.contains('Fondos insuficientes')) {
+                  _showErrorDialog(
+                      'No hay fondos suficientes en la cuenta de origen para realizar esta transferencia');
+                } else {
+                  _showErrorDialog(
+                      'Error al realizar la transferencia: $errorMessage');
+                }
+              }
+
             },
             child: const Text('Guardar'),
           ),
@@ -195,6 +230,8 @@ class _TransfersPageState extends State<TransfersPage> {
   Future<void> _showAddTransferDialog() async {
     final TextEditingController amountController = TextEditingController();
 
+    String? selectedOriginAccountId;
+    String? selectedDestinyAccountId;
     String? selectedOriginCount;
     String? selectedDestinyCount;
     DateTime selectedDate = DateTime.now();
@@ -208,39 +245,53 @@ class _TransfersPageState extends State<TransfersPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                decoration: const InputDecoration( 
+                decoration: const InputDecoration(
                   labelText: 'Cuenta de Origen',
                   border: OutlineInputBorder(),
                 ),
-                items: cardHolders.map((String number) {
+                items: List.generate(cardHolders.length, (index) {
                   return DropdownMenuItem<String>(
-                    value: number,
-                    child: Text(number),
+                    value: idAccounts[index],
+                    child: Text(cardHolders[index]),
                   );
-                }).toList(),
+                }),
                 onChanged: (String? newValue) {
                   setState(() {
-                    selectedOriginCount = newValue;
+                    selectedOriginAccountId = newValue;
+                    if (newValue != null) {
+                      int index = idAccounts.indexOf(newValue);
+                      if (index != -1) {
+                        selectedOriginCount = cardHolders[index];
+                      }
+                    }
                   });
                 },
               ),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: 'Cuenta de Destino',
                   border: OutlineInputBorder(),
                 ),
-                items: cardHolders.map((String number) {
+                items: List.generate(cardHolders.length, (index) {
                   return DropdownMenuItem<String>(
-                    value: number,
-                    child: Text(number),
+                    value: idAccounts[index],
+                    child: Text(cardHolders[index]),
                   );
-                }).toList(),
+                }),
                 onChanged: (String? newValue) {
                   setState(() {
-                    selectedDestinyCount = newValue;
+                    selectedDestinyAccountId = newValue;
+                    if (newValue != null) {
+                      int index = idAccounts.indexOf(newValue);
+                      if (index != -1) {
+                        selectedDestinyCount = cardHolders[index];
+                      }
+                    }
                   });
                 },
               ),
+              const SizedBox(height: 16),
               TextField(
                 controller: amountController,
                 decoration: const InputDecoration(labelText: 'Monto'),
@@ -273,37 +324,59 @@ class _TransfersPageState extends State<TransfersPage> {
           ),
           TextButton(
             onPressed: () async {
-              if (selectedOriginCount == null ||
+              if (selectedOriginAccountId == null ||
+                  selectedDestinyAccountId == null ||
+                  selectedOriginCount == null ||
                   selectedDestinyCount == null ||
                   amountController.text.isEmpty) {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Alerta'),
-                    content: const Text('Por favor complete todos los campos'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Aceptar'),
-                      ),
-                    ],
-                  ),
-                );
+                _showErrorDialog('Por favor complete todos los campos');
                 return;
               }
 
-              await firestoreService.addTransfer(
-                userId: userId,
-                date: selectedDate,
-                amount: double.tryParse(amountController.text) ?? 0,
-                originCount: selectedOriginCount!,
-                destinyCount: selectedDestinyCount!,
-              );
+              try {
+                await firestoreService.addTransfer(
+                  userId: userId,
+                  date: selectedDate,
+                  amount: double.tryParse(amountController.text) ?? 0,
+                  idOriginCount: selectedOriginAccountId!,
+                  idDestinyCount: selectedDestinyAccountId!,
+                  originCount: selectedOriginCount!,
+                  destinyCount: selectedDestinyCount!,
+                );
 
-              _loadTransfers();
-              Navigator.pop(context);
+                _loadTransfers();
+                Navigator.pop(context);
+              } catch (e) {
+                Navigator.pop(context);
+
+                String errorMessage = e.toString();
+
+                if (errorMessage.contains('Fondos insuficientes')) {
+                  _showErrorDialog(
+                      'No hay fondos suficientes en la cuenta de origen para realizar esta transferencia');
+                } else {
+                  _showErrorDialog(
+                      'Error al realizar la transferencia: $errorMessage');
+                }
+              }
             },
             child: const Text('Agregar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Aceptar'),
           ),
         ],
       ),
@@ -337,7 +410,7 @@ class _TransfersPageState extends State<TransfersPage> {
             TextButton(
               child: const Text('Eliminar'),
               onPressed: () async {
-                await firestoreService.deleteTransfer(userId, transfer['id']);
+                await firestoreService.deleteTransfer(userId:userId, docId: transfer['id']);
                 _loadTransfers();
                 Navigator.of(context).pop();
               },
@@ -362,7 +435,7 @@ class _TransfersPageState extends State<TransfersPage> {
                 ElevatedButton.icon(
                   onPressed: _showAddTransferDialog,
                   icon: const Icon(Icons.add),
-                  label: const Text('Agregar transaccion'),
+                  label: const Text('Agregar traspaso'),
                 ),
               ],
             ),
@@ -424,8 +497,10 @@ class _TransfersPageState extends State<TransfersPage> {
                   DataColumn(label: Text('Cuenta de Destino')),
                   DataColumn(label: Text('Monto')),
                 ],
-                
-                rows: (filteredTransfers.isNotEmpty ? filteredTransfers : transfers).map((transfer) {
+                rows: (filteredTransfers.isNotEmpty
+                        ? filteredTransfers
+                        : transfers)
+                    .map((transfer) {
                   return DataRow(
                     cells: [
                       DataCell(Row(
