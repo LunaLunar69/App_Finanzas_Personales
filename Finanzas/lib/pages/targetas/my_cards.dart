@@ -135,7 +135,7 @@ class _CardListPageState extends State<CardListPage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Actualizar Saldo'),
+          title: const Text('Actualizar Dinero en Efectivo'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -307,7 +307,7 @@ class _CardListPageState extends State<CardListPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      'Saldo',
+                      'Dinero Efectivo',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

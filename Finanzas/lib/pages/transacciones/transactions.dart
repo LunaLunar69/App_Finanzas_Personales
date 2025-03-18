@@ -11,10 +11,10 @@ class TransactionsPage extends StatefulWidget {
   const TransactionsPage({super.key});
 
   @override
-  _TransactionsPageState createState() => _TransactionsPageState();
+  TransactionsPageState createState() => TransactionsPageState();
 }
 
-class _TransactionsPageState extends State<TransactionsPage> {
+class TransactionsPageState extends State<TransactionsPage> {
   final FirestoreService firestoreService = FirestoreService();
   final categoriesStreamController = StreamController<List<String>>();
   final String userId = FirebaseAuth.instance.currentUser!.uid;
